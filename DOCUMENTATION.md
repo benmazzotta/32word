@@ -26,7 +26,7 @@ pip install word32
 Or install from source:
 
 ```bash
-git clone https://github.com/yourusername/32word.git
+git clone https://github.com/benmazzotta/32word.git
 cd 32word
 pip install -e .
 ```
@@ -1175,7 +1175,7 @@ def foo() -> Tuple[str, str, str, str]:
 The 32word library makes Wordle solving elegant and educational. Whether you're building a game, analyzing word patterns, or understanding Wordle strategy, this library provides the tools to do it efficiently.
 
 **Quick Links:**
-- GitHub: https://github.com/yourusername/32word
-- Issues: https://github.com/yourusername/32word/issues
+- GitHub: https://github.com/benmazzotta/32word
+- Issues: https://github.com/benmazzotta/32word/issues
 
 Happy Wordling! 🎮
