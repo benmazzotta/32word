@@ -1,0 +1,3 @@
+include word32/data/*.txt
+include word32/data/*.json
+recursive-include word32/data *

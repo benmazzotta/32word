@@ -29,7 +29,7 @@ pip install 32word
 You can solve Wordle blindly, or you can learn the patterns that elite players discovered through exhaustive analysis. This library provides:
 
 1. **Optimal two-guess strategies** that consistently solve Wordle in three attempts
-2. **Pre-computed strategy tables** based on simulations across all 2,309 target words
+2. **Pre-computed strategy tables** based on simulations across all 3,158 target words
 3. **A clean API** for building bots, websites, and training tools
 
 The solver logic lives here. Everything elseâ€”web apps, Discord bots, Telegram botsâ€”imports this library as a dependency.
@@ -106,7 +106,7 @@ remaining = filter_targets(VALID_TARGETS, "STARE", ('G', 'Y', 'B', 'B', 'G'))
 load_strategy(version: str = "v1.0") -> Strategy
 ```
 
-Loads a pre-computed strategy table. The default `v1.0` uses expected-remaining minimization over all 2,309 Wordle targets.
+Loads a pre-computed strategy table. The default `v1.0` uses expected-remaining minimization over all 3,158 Wordle targets.
 
 **Strategy methods:**
 ```python
@@ -132,7 +132,7 @@ Shortcut for getting the optimal second guess.
 ```python
 is_valid_word(word: str) -> bool
 ```
-Check if a word is in Wordle's valid guess list (12,950 words).
+Check if a word is in Wordle's valid guess list (14,855 words).
 
 ```python
 get_remaining_candidates(targets: list[str], guess: str, clue: tuple) -> int
@@ -143,7 +143,7 @@ Count how many targets remain after a guess.
 
 Each strategy is a lookup table built from tournament simulations. The process:
 
-1. **First guess selection**: Test every valid target word as a first guess against all 2,309 possible Wordle targets
+1. **First guess selection**: Test every valid target word as a first guess against all 3,158 possible Wordle targets
 2. **Clue simulation**: For each first guess, generate all possible clues (up to 243 patterns, though most never occur)
 3. **Second guess optimization**: For each (first_guess, clue) pair, find the second guess that minimizes expected remaining candidates
 4. **Tournament ranking**: Score strategies by expected remaining words after two guesses across all targets
@@ -251,8 +251,8 @@ word32/
 â”œâ”€â”€ data/
 â”‚   â”œâ”€â”€ strategies/
 â”‚   â”‚   â””â”€â”€ v1.0.json     # Pre-computed optimal strategy
-â”‚   â”œâ”€â”€ targets.txt       # 2,309 Wordle targets
-â”‚   â””â”€â”€ valid_guesses.txt # 12,950 valid guesses
+â”‚   â”œâ”€â”€ targets.txt       # 3,158 Wordle targets
+â”‚   â””â”€â”€ valid_guesses.txt # 14,855 valid guesses
 â””â”€â”€ tests/
     â”œâ”€â”€ test_clues.py
     â”œâ”€â”€ test_filtering.py
