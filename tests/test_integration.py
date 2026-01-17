@@ -18,7 +18,7 @@ def test_full_game_workflow():
 
     # Verify first guess
     first_guess = strategy.first_guess()
-    assert first_guess == "STARE"
+    assert first_guess == "ATONE"
     assert is_valid_word(first_guess)
 
     # Simulate playing against target "WORLD"
@@ -142,7 +142,7 @@ def test_strategy_with_all_black_clue():
     """Test strategy handles the common 'all black' clue (no matching letters)."""
     strategy = load_strategy("v1.0")
 
-    # All black clue - none of STARE's letters in target
+    # All black clue - none of ATONE's letters in target
     all_black_clue = ('B', 'B', 'B', 'B', 'B')
     second_guess = strategy.second_guess(all_black_clue)
 
@@ -150,7 +150,7 @@ def test_strategy_with_all_black_clue():
     assert is_valid_word(second_guess)
 
     # Verify the second guess is different from first guess
-    assert second_guess != "STARE"
+    assert second_guess != "ATONE"
 
 
 def test_strategy_with_perfect_match():
