@@ -63,6 +63,85 @@ print(f"Second guess: {second_guess}")
 
 Two guesses. Then solve. That's the strategy.
 
+## Phase 4.2/4.3 Features
+
+The library now includes enhanced features for building interactive applications:
+
+### Response Schema (Phase 4.2)
+
+Standardized JSON responses for cross-platform consistency:
+
+```python
+from word32 import build_game_response, get_second_guess_recommendation
+
+# Build a standardized response
+response = build_game_response(
+    guess="RAISE",
+    clue=('G', 'Y', 'X', 'X', 'G'),
+    remaining_targets=['AGILE', 'ALIAS', 'AMISS'],
+    strategy_recommendation={
+        'recommended_guess': 'CLOUD',
+        'confidence': 0.95
+    },
+    game_state={
+        'guess_number': 1,
+        'guesses_so_far': ['RAISE'],
+        'is_solved': False
+    }
+)
+
+# Convert to JSON
+print(response.to_json())
+```
+
+### Custom First Guess Selection (Phase 4.3)
+
+Choose from 32 optimal first guesses:
+
+```python
+from word32 import get_available_first_guesses, select_first_guess, get_second_guess_recommendation
+
+# Get all 32 available first guesses
+options = get_available_first_guesses()
+for opt in options[:5]:
+    print(f"{opt['first_guess']} - Rank {opt['rank']}, Expected: {opt['expected_remaining']:.1f}")
+
+# Select a custom first guess
+selected = select_first_guess("RAISE")
+if selected:
+    print(f"Selected: {selected['first_guess']} (Rank {selected['rank']})")
+
+# Get strategy recommendation for custom first guess
+clue = ('G', 'Y', 'X', 'X', 'G')
+recommendation = get_second_guess_recommendation("RAISE", clue)
+print(f"Recommended second guess: {recommendation}")
+```
+
+### Remaining Words Tracking
+
+Track and display remaining possible words:
+
+```python
+from word32 import build_game_response, filter_targets, VALID_TARGETS
+
+remaining = filter_targets(VALID_TARGETS, "RAISE", ('G', 'Y', 'X', 'X', 'G'))
+response = build_game_response(
+    guess="RAISE",
+    clue=('G', 'Y', 'X', 'X', 'G'),
+    remaining_targets=remaining,
+    sample_size=10  # Show up to 10 words
+)
+
+print(f"{response.remaining.count} words remain")
+print(f"Sample: {response.remaining.sample}")
+```
+
+**Integration Guides:**
+- [Web App Integration](./docs/INTEGRATION_WEB_APP.md) - React/Flask examples
+- [Discord Bot Integration](./docs/INTEGRATION_DISCORD_BOT.md) - discord.py examples
+- [CLI Usage Guide](./docs/INTEGRATION_CLI.md) - Command-line interface
+- [Response Schema Reference](./docs/RESPONSE_SCHEMA_REFERENCE.md) - Complete API docs
+
 ## Core API
 
 ### Clue Generation
@@ -302,6 +381,18 @@ To add a new strategy:
 - [ ] Signal bot
 - [ ] WhatsApp bot
 
+### Phase 4.2: Response Schema ✅
+- [x] Standardized JSON response structure
+- [x] Cross-platform consistency
+- [x] Remaining words tracking
+- [x] Strategy recommendations
+
+### Phase 4.3: First Guess Selection ✅
+- [x] 32 optimal first guess options
+- [x] Custom first guess selection
+- [x] Strategy lookup for all first guesses
+- [x] Metrics and ranking
+
 ### Future Extensions
 - [ ] Three-deep strategies
 - [ ] Minimax variants
@@ -315,6 +406,18 @@ This code should be free. The insights are already publishedâ€”researchers 
 
 Build a bot. Build a training app. Build a better solver. The game is solved. Now go teach people how to win.
 
+## Data Completeness
+
+The library requires several data files for full functionality. See [Data Completeness Checklist](./docs/DATA_COMPLETENESS_CHECKLIST.md) for details.
+
+**Required files:**
+- `data/targets.txt` - 2,309 target words
+- `data/valid_guesses.txt` - 12,950 valid guesses
+- `data/phase2_naive_32.json` - 32 first guess options
+- `data/phase3_lookup.json` - Strategy lookup for all patterns
+
+The library will warn on import if data files are missing or incomplete.
+
 ## Contributing
 
 Contributions welcome! Please:
@@ -323,6 +426,11 @@ Contributions welcome! Please:
 2. **Write tests** for new features
 3. **Follow the existing style** (stateless functions, simple API)
 4. **Update docs** if you change the API
+
+**Integration Examples:**
+- See [docs/INTEGRATION_WEB_APP.md](./docs/INTEGRATION_WEB_APP.md) for web app patterns
+- See [docs/INTEGRATION_DISCORD_BOT.md](./docs/INTEGRATION_DISCORD_BOT.md) for bot patterns
+- See [docs/INTEGRATION_CLI.md](./docs/INTEGRATION_CLI.md) for CLI patterns
 
 ### Areas for Contribution
 
