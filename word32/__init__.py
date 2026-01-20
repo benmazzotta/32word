@@ -2,7 +2,7 @@
 32word - The game engine for 3-2-Word: Solve Wordle in three guesses.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.1.3"
 
 # Data validation on import
 from .data_manager import get_data_manager
