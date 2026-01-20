@@ -332,7 +332,7 @@ def validate_response(response: dict, schema_version: str = "1.0") -> tuple[bool
             return False, "Clue must be a list of 5 elements"
         
         for code in clue:
-            if code not in ['G', 'Y', 'X']:
+            if code not in ['G', 'Y', 'X', 'B']:
                 return False, f"Invalid clue code: {code}"
         
         # Validate remaining structure
