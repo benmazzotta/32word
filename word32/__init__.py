@@ -2,13 +2,16 @@
 32word - The game engine for 3-2-Word: Solve Wordle in three guesses.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 # Core functions
 from .core import generate_clue, filter_targets, is_valid_word, get_remaining_candidates
 from .strategy import (
-    load_strategy, 
-    get_second_guess, 
+    load_strategy,
+    load_strategy_by_components,
+    list_strategies_by_depth,
+    list_all_strategies,
+    get_second_guess,
     Strategy,
     # Phase 4.3 functions
     select_first_guess,
@@ -41,6 +44,9 @@ __all__ = [
     "is_valid_word",
     "get_remaining_candidates",
     "load_strategy",
+    "load_strategy_by_components",
+    "list_strategies_by_depth",
+    "list_all_strategies",
     "get_second_guess",
     "Strategy",
     "VALID_TARGETS",
