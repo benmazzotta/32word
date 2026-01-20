@@ -4,6 +4,21 @@
 
 __version__ = "0.2.0"
 
+# Data validation on import
+from .data_manager import get_data_manager
+
+# Perform startup validation
+_data_manager = get_data_manager()
+_validation_issues = _data_manager.validate_data_completeness()
+if _validation_issues:
+    import warnings
+    warnings.warn(
+        f"Data validation issues detected: {', '.join(_validation_issues)}. "
+        "Some Phase 4.2/4.3 features may not work correctly. "
+        "See docs/DATA_COMPLETENESS_CHECKLIST.md for recovery steps.",
+        UserWarning
+    )
+
 # Core functions
 from .core import generate_clue, filter_targets, is_valid_word, get_remaining_candidates
 from .strategy import (
