@@ -1,14 +1,14 @@
-# Release Notes: 32word v0.1.3
+# Release Notes: 32word v0.2.0
 
 **Release Date:** 2026-01-19  
-**Version:** 0.1.3  
+**Version:** 0.2.0  
 **Status:** Stable Release
 
 ---
 
 ## Summary
 
-Version 0.1.3 introduces major enhancements for building interactive Wordle applications, including standardized response schemas, custom first guess selection, and comprehensive data validation. This release maintains full backwards compatibility with v0.1.2 and earlier versions.
+Version 0.2.0 introduces major enhancements for building interactive Wordle applications, including standardized response schemas, custom first guess selection, and comprehensive data validation. This release maintains full backwards compatibility with v0.1.2, v0.1.3, and earlier versions.
 
 ### Key Highlights
 
@@ -273,7 +273,7 @@ All data files are included in the package distribution.
 
 ## Migration Guide
 
-### Upgrading from v0.1.2
+### Upgrading from v0.1.2 or v0.1.3
 
 No code changes required! All existing code continues to work.
 
@@ -324,7 +324,7 @@ pytest tests/ -v
 
 ## Bug Fixes
 
-- Fixed version consistency (now 0.1.3 across all files)
+- Fixed version consistency (now 0.2.0 across all files)
 - Improved error messages for invalid data files
 - Enhanced validation to catch edge cases
 
@@ -352,7 +352,7 @@ Built by Ben Mazzotta as part of the 3-2-Word project.
 
 ## Changelog
 
-### v0.1.3 (2026-01-19)
+### v0.2.0 (2026-01-19)
 
 - Added Phase 4.2 response schema (GameResponse, ErrorResponse, etc.)
 - Added Phase 4.3 custom first guess selection (32 options)
@@ -364,6 +364,10 @@ Built by Ben Mazzotta as part of the 3-2-Word project.
 - Enhanced Strategy class to support all 32 first guesses
 - Created comprehensive integration documentation
 - Fixed version consistency
+
+### v0.1.3 (2026-01-16)
+
+- Phase 4.2/4.3 exports (response schema, first guess selection)
 
 ### v0.1.2
 
