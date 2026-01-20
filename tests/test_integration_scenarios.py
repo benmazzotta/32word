@@ -11,6 +11,7 @@ from word32 import (
     get_available_first_guesses,
     select_first_guess,
     get_second_guess_recommendation,
+    ErrorCode,
     VALID_TARGETS,
 )
 from word32.strategy import load_strategy
@@ -524,3 +525,177 @@ class TestScenario5CrossPlatformConsistency:
         assert 'guess' in response_dict
         assert 'clue' in response_dict
         assert 'remaining' in response_dict
+    
+    def test_error_response_consistency(self):
+        """Test that error responses are consistent across platforms."""
+        # Simulate same error on different platforms
+        error_cli = build_error_response("Invalid Guess", "Word not found", ErrorCode.INVALID_GUESS)
+        error_web = build_error_response("Invalid Guess", "Word not found", ErrorCode.INVALID_GUESS)
+        error_discord = build_error_response("Invalid Guess", "Word not found", ErrorCode.INVALID_GUESS)
+        
+        # All should have identical structure
+        assert error_cli.to_dict() == error_web.to_dict() == error_discord.to_dict()
+        assert error_cli.success == error_web.success == error_discord.success == False
+        assert error_cli.error_code == error_web.error_code == error_discord.error_code
+    
+    def test_response_modes_consistency(self):
+        """Test that different response modes are consistent across platforms."""
+        first_guess = "ATONE"
+        target = "WORLD"
+        clue = generate_clue(first_guess, target)
+        remaining = filter_targets(VALID_TARGETS, first_guess, clue)
+        
+        # Test all modes
+        response_full = build_game_response(guess=first_guess, clue=clue, remaining_targets=remaining, mode='full')
+        response_minimal = build_game_response(guess=first_guess, clue=clue, remaining_targets=remaining, mode='minimal')
+        response_extended = build_game_response(guess=first_guess, clue=clue, remaining_targets=remaining, mode='extended')
+        
+        # Core fields should be identical
+        assert response_full.success == response_minimal.success == response_extended.success
+        assert response_full.guess == response_minimal.guess == response_extended.guess
+        assert response_full.clue == response_minimal.clue == response_extended.clue
+        assert response_full.remaining.count == response_minimal.remaining.count == response_extended.remaining.count
+        
+        # Minimal mode should exclude optional fields
+        assert response_minimal.strategy is None
+        assert response_minimal.game_state is None
+    
+    def test_strategy_recommendation_consistency(self):
+        """Test that strategy recommendations are consistent across platforms."""
+        available = get_available_first_guesses()
+        if not available:
+            pytest.skip("No first guesses available")
+        
+        first_guess = available[0]['first_guess']
+        target = "WORLD"
+        clue = generate_clue(first_guess, target)
+        
+        # Get strategy recommendation
+        second_guess_rec = get_second_guess_recommendation(first_guess, clue)
+        
+        # Build responses with strategy recommendation
+        strategy_info = {
+            'recommended_guess': second_guess_rec,
+            'confidence': 0.9,
+            'coverage': 0.8
+        } if second_guess_rec else None
+        
+        response_cli = build_game_response(
+            guess=first_guess,
+            clue=clue,
+            remaining_targets=filter_targets(VALID_TARGETS, first_guess, clue),
+            strategy_recommendation=strategy_info
+        )
+        
+        response_web = build_game_response(
+            guess=first_guess,
+            clue=clue,
+            remaining_targets=filter_targets(VALID_TARGETS, first_guess, clue),
+            strategy_recommendation=strategy_info
+        )
+        
+        # Strategy recommendations should be identical
+        if strategy_info:
+            assert response_cli.strategy is not None
+            assert response_web.strategy is not None
+            assert response_cli.strategy.recommended_guess == response_web.strategy.recommended_guess
+    
+    def test_cli_usage_pattern_simulation(self):
+        """Simulate CLI usage pattern (sequential function calls)."""
+        # CLI typically calls functions sequentially
+        available = get_available_first_guesses()
+        first_guess_option = select_first_guess("RAISE")
+        
+        if first_guess_option is None:
+            pytest.skip("RAISE not available")
+        
+        first_guess = first_guess_option['first_guess']
+        target = "WORLD"
+        
+        # Sequential calls as CLI would make
+        clue = generate_clue(first_guess, target)
+        remaining = filter_targets(VALID_TARGETS, first_guess, clue)
+        second_guess_rec = get_second_guess_recommendation(first_guess, clue)
+        response = build_game_response(first_guess, clue, remaining)
+        
+        # Verify results
+        assert response.success is True
+        assert response.remaining.count == len(remaining)
+        assert target in remaining
+    
+    def test_web_app_usage_pattern_simulation(self):
+        """Simulate Web App usage pattern (API-like function calls)."""
+        # Web App typically makes API-like calls
+        available = get_available_first_guesses()
+        first_guess = available[0]['first_guess'] if available else "ATONE"
+        target = "WORLD"
+        
+        # API-like calls
+        clue = generate_clue(first_guess, target)
+        remaining = filter_targets(VALID_TARGETS, first_guess, clue)
+        second_guess_rec = get_second_guess_recommendation(first_guess, clue)
+        
+        strategy_info = {
+            'recommended_guess': second_guess_rec,
+            'confidence': 0.9,
+            'coverage': 0.8
+        } if second_guess_rec else None
+        
+        response = build_game_response(
+            guess=first_guess,
+            clue=clue,
+            remaining_targets=remaining,
+            strategy_recommendation=strategy_info,
+            mode='full'
+        )
+        
+        # Verify JSON serialization works
+        response_dict = response.to_dict()
+        is_valid, error_msg = validate_response(response_dict)
+        assert is_valid is True, f"Response validation failed: {error_msg}"
+    
+    def test_discord_bot_usage_pattern_simulation(self):
+        """Simulate Discord Bot usage pattern (minimal mode responses)."""
+        # Discord Bot uses minimal mode for concise messages
+        available = get_available_first_guesses()
+        first_guess = available[0]['first_guess'] if available else "ATONE"
+        target = "WORLD"
+        
+        clue = generate_clue(first_guess, target)
+        remaining = filter_targets(VALID_TARGETS, first_guess, clue)
+        
+        # Minimal mode for Discord
+        response = build_game_response(
+            guess=first_guess,
+            clue=clue,
+            remaining_targets=remaining,
+            mode='minimal'
+        )
+        
+        # Verify minimal structure
+        assert response.success is True
+        assert response.guess == first_guess.upper()
+        assert response.remaining.count == len(remaining)
+        assert response.strategy is None  # Minimal mode excludes strategy
+        assert response.game_state is None  # Minimal mode excludes game_state
+    
+    def test_platform_simulation_produces_identical_core_results(self):
+        """Test that CLI, Web App, and Discord Bot produce identical core results."""
+        first_guess = "ATONE"
+        target = "WORLD"
+        clue = generate_clue(first_guess, target)
+        remaining = filter_targets(VALID_TARGETS, first_guess, clue)
+        
+        # Simulate all three platforms with same inputs
+        response_cli = build_game_response(first_guess, clue, remaining, mode='full')
+        response_web = build_game_response(first_guess, clue, remaining, mode='full')
+        response_discord = build_game_response(first_guess, clue, remaining, mode='minimal')
+        
+        # Core fields should be identical
+        assert response_cli.success == response_web.success == response_discord.success
+        assert response_cli.guess == response_web.guess == response_discord.guess
+        assert response_cli.clue == response_web.clue == response_discord.clue
+        assert response_cli.remaining.count == response_web.remaining.count == response_discord.remaining.count
+        
+        # Full mode responses should be identical
+        assert response_cli.to_dict() == response_web.to_dict()
