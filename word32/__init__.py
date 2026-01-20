@@ -21,6 +21,9 @@ if _validation_issues:
 
 # Core functions
 from .core import generate_clue, filter_targets, is_valid_word, get_remaining_candidates
+
+# Configuration
+from .config import set_guess_validation_mode, get_guess_validation_mode, reset_guess_validation_mode
 from .strategy import (
     load_strategy,
     load_strategy_by_components,
@@ -52,12 +55,25 @@ from .response_schema import (
     get_remaining_sample,
 )
 
+# Custom exceptions
+from .exceptions import (
+    Word32Error,
+    DataValidationError,
+    StrategyNotFoundError,
+    InvalidClueError,
+    InvalidGuessError,
+)
+
 __all__ = [
     # Core functions
     "generate_clue",
     "filter_targets",
     "is_valid_word",
     "get_remaining_candidates",
+    # Configuration
+    "set_guess_validation_mode",
+    "get_guess_validation_mode",
+    "reset_guess_validation_mode",
     "load_strategy",
     "load_strategy_by_components",
     "list_strategies_by_depth",
@@ -84,4 +100,10 @@ __all__ = [
     "build_error_response",
     "validate_response",
     "get_remaining_sample",
+    # Custom exceptions
+    "Word32Error",
+    "DataValidationError",
+    "StrategyNotFoundError",
+    "InvalidClueError",
+    "InvalidGuessError",
 ]

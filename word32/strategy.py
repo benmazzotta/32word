@@ -1,44 +1,108 @@
-"""Strategy loading and execution for the 32word library."""
+"""Strategy loading and execution for the 32word library.
+
+This module provides strategy loading, first guess selection, and second guess
+recommendations for the 32word library. Supports both legacy v1.0 format and
+new Phase 3/4 lightweight formats with 32 first guess options.
+"""
 
 import json
+import logging
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, TypedDict, Literal
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+# Type definitions for better type checking
+class FirstGuessMetrics(TypedDict, total=False):
+    """Metrics for a first guess option."""
+    max_remaining: int
+    clue_diversity: int
+    variance: float
+    std_dev: float
+
+class FirstGuessOption(TypedDict, total=False):
+    """First guess option with metrics."""
+    first_guess: str
+    rank: int
+    expected_remaining: float
+    metrics: FirstGuessMetrics
+    available: bool
+    coverage: float
+
+ClueTuple = Tuple[str, str, str, str, str]
 
 
 class Strategy:
     """A pre-computed Wordle strategy with second-guess lookups.
 
     Supports both legacy format (full clues dict) and new lightweight format
-    (selected patterns with phase3_lookup reference).
+    (selected patterns with phase3_lookup reference). Can work with any of
+    the 32 available first guesses, defaulting to ATONE for backwards compatibility.
+
+    Attributes:
+        version: Strategy version string
+        first_guess_word: The first guess word this strategy uses
+        lookup_table: Internal lookup table for clue patterns to second guesses
     """
 
-    def __init__(self, version="v1.0", data: dict = None, lookup_table: dict = None, phase3_lookup: dict = None):
+    def __init__(
+        self,
+        version: str = "v1.0",
+        data: Optional[Dict] = None,
+        lookup_table: Optional[Dict] = None,
+        phase3_lookup: Optional[Dict] = None,
+        first_guess: Optional[str] = None
+    ):
         """Initialize a strategy.
 
         Args:
-            version: Strategy version string
+            version: Strategy version string (e.g., "v1.0", "2d-8r-trice")
             data: Strategy data dict (for lightweight format)
             lookup_table: Full lookup table (for legacy format or populated from phase3_lookup)
             phase3_lookup: Phase 3 lookup table for pattern-based filtering
+            first_guess: Optional first guess word to use (defaults to ATONE for backwards compatibility)
         """
         self.version = version
         self.data = data or {}
         self.lookup_table = lookup_table or {}
         self._phase3_lookup = phase3_lookup
         self._metadata = self.data.get("metadata", {})
-        self.first_guess_word = self.data.get("first_guess", "ATONE")
+        
+        # Determine first guess: explicit parameter > data > default ATONE
+        if first_guess:
+            self.first_guess_word = first_guess.upper()
+        else:
+            self.first_guess_word = self.data.get("first_guess", "ATONE").upper()
+        
         self.remainder_guess2 = self.data.get("remainder_guess2")
         self._selected_patterns = self.data.get("selected_patterns")
 
         # For v1.0 legacy format, the lookup_table is the full dict keyed by first guess
-        # Extract the ATONE strategy from it
-        if self.version == "v1.0" and self.lookup_table and "ATONE" in self.lookup_table:
-            self.lookup_table = {"ATONE": self.lookup_table["ATONE"]}
-            self.first_guess_word = "ATONE"
+        # Extract the strategy for the selected first guess
+        if self.version == "v1.0" and self.lookup_table:
+            if self.first_guess_word in self.lookup_table:
+                self.lookup_table = {self.first_guess_word: self.lookup_table[self.first_guess_word]}
+            elif "ATONE" in self.lookup_table:
+                # Fallback to ATONE for backwards compatibility
+                logger.warning(f"First guess '{self.first_guess_word}' not found in v1.0 lookup, using ATONE")
+                self.lookup_table = {"ATONE": self.lookup_table["ATONE"]}
+                self.first_guess_word = "ATONE"
 
         # Build clues from phase3_lookup if needed
         if self._selected_patterns and not self.lookup_table:
             self._build_clues_from_lookup(phase3_lookup)
+        
+        # If no lookup_table was built and we have a first_guess, try to load from phase3_lookup
+        if not self.lookup_table and not self._phase3_lookup:
+            # Try to load phase3_lookup for this first guess using StrategyIndex
+            try:
+                phase3_data = _strategy_index.get_strategy_lookup()
+                if phase3_data and self.first_guess_word.upper() in phase3_data:
+                    self._phase3_lookup = phase3_data
+                    logger.debug(f"Loaded phase3_lookup for first guess: {self.first_guess_word}")
+            except Exception as e:
+                logger.debug(f"Could not load phase3_lookup: {e}")
 
     def _build_clues_from_lookup(self, phase3_lookup: dict) -> None:
         """Build clues dict from phase3_lookup and selected patterns."""
@@ -76,15 +140,20 @@ class Strategy:
         """Return the recommended first guess."""
         return self.first_guess_word
 
-    def second_guess(self, clue: Tuple[str, str, str, str, str]) -> Optional[str]:
+    def second_guess(self, clue: ClueTuple) -> Optional[str]:
         """Get the optimal second guess for a given first-guess clue.
 
         Args:
             clue: A tuple of 5 characters representing the Wordle clue
-              'G' for green, 'Y' for yellow, 'B' for black/gray
+              'G' for green, 'Y' for yellow, 'B' or 'X' for black/gray
 
         Returns:
             The optimal second guess word, or remainder_guess2, or None if not found
+
+        Example:
+            >>> strategy = load_strategy()
+            >>> strategy.second_guess(('G', 'Y', 'B', 'B', 'B'))
+            'CLOUD'
         """
         # Convert clue tuple to string pattern
         # Replace 'B' (black) with 'X' (the convention used in strategy lookup)
@@ -141,17 +210,20 @@ class Strategy:
         return len(self.lookup_table)
 
 
-def load_strategy(version: str = "v1.0") -> Strategy:
+def load_strategy(version: str = "v1.0", first_guess: Optional[str] = None) -> Strategy:
     """Load a pre-computed strategy table.
 
     Supports both legacy v1.0 format and new lightweight depth-based formats.
+    Can work with any of the 32 available first guesses.
 
     Examples:
-        load_strategy("v1.0")  # Legacy format
+        load_strategy("v1.0")  # Legacy format (defaults to ATONE)
         load_strategy("2d-8r-trice")  # New lightweight format
+        load_strategy("v1.0", first_guess="RAISE")  # Use RAISE as first guess
 
     Args:
         version: Strategy version (default "v1.0")
+        first_guess: Optional first guess word to use (defaults to strategy default, usually ATONE)
 
     Returns:
         A Strategy object with populated lookup table
@@ -184,7 +256,13 @@ def load_strategy(version: str = "v1.0") -> Strategy:
             # Legacy format - data is the lookup table itself
             lookup_table = data
 
-    return Strategy(version=version, data=data, lookup_table=lookup_table, phase3_lookup=phase3_lookup)
+    return Strategy(
+        version=version,
+        data=data,
+        lookup_table=lookup_table,
+        phase3_lookup=phase3_lookup,
+        first_guess=first_guess
+    )
 
 
 def load_strategy_by_components(guess1: str, depth: int) -> Strategy:
@@ -281,120 +359,199 @@ def get_second_guess(strategy: Strategy, first_clue: tuple) -> Optional[str]:
 
 # Phase 4.3: First guess selection and strategy lookup functions
 
-# Cache for first guess options and strategy lookup (loaded once)
-_first_guess_cache: Optional[List[Dict]] = None
-_strategy_lookup_cache: Optional[Dict] = None
+class StrategyIndex:
+    """Index for efficient strategy lookups across all 32 first guesses.
+    
+    Provides O(1) lookup performance for second guess recommendations.
+    Caches loaded data for efficient access.
+    """
+    
+    def __init__(self):
+        """Initialize StrategyIndex with empty caches."""
+        self._first_guess_cache: Optional[List[FirstGuessOption]] = None
+        self._strategy_lookup_cache: Optional[Dict[str, Dict[str, List[Dict]]]] = None
+    
+    def get_first_guess_options(self) -> List[FirstGuessOption]:
+        """Get all available first guess options.
+        
+        Returns:
+            List of first guess options, cached after first load.
+        """
+        if self._first_guess_cache is not None:
+            return self._first_guess_cache
+        
+        data_dir = Path(__file__).parent.joinpath('data')
+        naive_32_file = data_dir.joinpath('phase2_naive_32.json')
+        
+        if not naive_32_file.exists():
+            logger.warning(f"phase2_naive_32.json not found at {naive_32_file}")
+            self._first_guess_cache = []
+            return self._first_guess_cache
+        
+        try:
+            with open(naive_32_file, 'r') as f:
+                options = json.load(f)
+            logger.debug(f"Loaded {len(options)} first guess options from phase2_naive_32.json")
+        except Exception as e:
+            logger.error(f"Error loading phase2_naive_32.json: {e}")
+            self._first_guess_cache = []
+            return self._first_guess_cache
+        
+        # Transform to match expected format
+        self._first_guess_cache = []
+        for entry in options:
+            transformed: FirstGuessOption = {
+                'first_guess': entry['guess'].upper(),
+                'rank': entry['rank'],
+                'expected_remaining': entry.get('expected_remaining', 0.0),
+                'metrics': {
+                    'max_remaining': entry.get('max_remaining', 0),
+                    'clue_diversity': entry.get('clue_diversity', 0),
+                    'variance': entry.get('variance', 0.0),
+                    'std_dev': entry.get('std_dev', 0.0)
+                },
+                'available': True,
+                'coverage': 0.8125  # Default coverage estimate
+            }
+            self._first_guess_cache.append(transformed)
+        
+        return self._first_guess_cache
+    
+    def get_strategy_lookup(self) -> Dict[str, Dict[str, List[Dict]]]:
+        """Get the full strategy lookup table.
+        
+        Returns:
+            Dictionary mapping first_guess -> clue_pattern -> list of candidates.
+            Cached after first load for O(1) access.
+        """
+        if self._strategy_lookup_cache is not None:
+            return self._strategy_lookup_cache
+        
+        data_dir = Path(__file__).parent.joinpath('data')
+        lookup_file = data_dir.joinpath('phase3_lookup.json')
+        
+        if not lookup_file.exists():
+            logger.warning(f"phase3_lookup.json not found at {lookup_file}")
+            self._strategy_lookup_cache = {}
+            return self._strategy_lookup_cache
+        
+        try:
+            with open(lookup_file, 'r') as f:
+                self._strategy_lookup_cache = json.load(f)
+            logger.debug(f"Loaded strategy lookup with {len(self._strategy_lookup_cache)} first guesses")
+        except Exception as e:
+            logger.error(f"Error loading phase3_lookup.json: {e}")
+            self._strategy_lookup_cache = {}
+            return self._strategy_lookup_cache
+        
+        return self._strategy_lookup_cache
+    
+    def get_second_guess(self, first_guess: str, clue_pattern: str) -> Optional[str]:
+        """Get second guess recommendation for a first guess and clue pattern.
+        
+        O(1) lookup performance using cached strategy lookup.
+        
+        Args:
+            first_guess: The first guess word (case-insensitive)
+            clue_pattern: The clue pattern string (e.g., "GXXYG")
+            
+        Returns:
+            Recommended second guess word, or None if not found
+        """
+        lookup = self.get_strategy_lookup()
+        first_guess_upper = first_guess.upper()
+        
+        if first_guess_upper not in lookup:
+            return None
+        
+        first_guess_data = lookup[first_guess_upper]
+        candidates = first_guess_data.get(clue_pattern)
+        
+        if not candidates or len(candidates) == 0:
+            return None
+        
+        return candidates[0]['second_guess']
 
 
-def _load_first_guess_options() -> List[Dict]:
-    """Load Phase 2 naive-32 first guess options from data file."""
-    global _first_guess_cache
-    
-    if _first_guess_cache is not None:
-        return _first_guess_cache
-    
-    data_dir = Path(__file__).parent.joinpath('data')
-    naive_32_file = data_dir.joinpath('phase2_naive_32.json')
-    
-    if not naive_32_file.exists():
-        _first_guess_cache = []
-        return _first_guess_cache
-    
-    with open(naive_32_file, 'r') as f:
-        options = json.load(f)
-    
-    # Transform to match expected format
-    _first_guess_cache = []
-    for entry in options:
-        transformed = {
-            'first_guess': entry['guess'].upper(),
-            'rank': entry['rank'],
-            'expected_remaining': entry.get('expected_remaining', 0.0),
-            'metrics': {
-                'max_remaining': entry.get('max_remaining', 0),
-                'clue_diversity': entry.get('clue_diversity', 0),
-                'variance': entry.get('variance', 0.0),
-                'std_dev': entry.get('std_dev', 0.0)
-            },
-            'available': True,
-            'coverage': 0.8125  # Default coverage estimate
-        }
-        _first_guess_cache.append(transformed)
-    
-    return _first_guess_cache
+# Global StrategyIndex instance for module-level functions
+_strategy_index = StrategyIndex()
+
+# Legacy module-level cache variables (deprecated, use StrategyIndex instead)
+_first_guess_cache: Optional[List[FirstGuessOption]] = None
+_strategy_lookup_cache: Optional[Dict[str, Dict[str, List[Dict]]]] = None
 
 
-def _load_strategy_lookup() -> Dict:
-    """Load Phase 3 strategy lookup from data file."""
-    global _strategy_lookup_cache
+def _load_first_guess_options() -> List[FirstGuessOption]:
+    """Load Phase 2 naive-32 first guess options from data file.
     
-    if _strategy_lookup_cache is not None:
-        return _strategy_lookup_cache
+    Legacy function - use StrategyIndex.get_first_guess_options() instead.
     
-    data_dir = Path(__file__).parent.joinpath('data')
-    lookup_file = data_dir.joinpath('phase3_lookup.json')
-    
-    if not lookup_file.exists():
-        _strategy_lookup_cache = {}
-        return _strategy_lookup_cache
-    
-    with open(lookup_file, 'r') as f:
-        _strategy_lookup_cache = json.load(f)
-    
-    return _strategy_lookup_cache
+    Returns:
+        List of first guess options with metrics, cached after first load.
+    """
+    return _strategy_index.get_first_guess_options()
 
 
-def get_available_first_guesses() -> List[Dict]:
+def _load_strategy_lookup() -> Dict[str, Dict[str, List[Dict]]]:
+    """Load Phase 3 strategy lookup from data file.
+    
+    Legacy function - use StrategyIndex.get_strategy_lookup() instead.
+    
+    Returns:
+        Dictionary mapping first_guess -> clue_pattern -> list of candidates.
+        Cached after first load.
+    """
+    return _strategy_index.get_strategy_lookup()
+
+
+def get_available_first_guesses() -> List[FirstGuessOption]:
     """Get all available first guess options with metrics.
     
     Returns all 32 naive patterns from Phase 2 analysis, sorted by rank.
     Each entry includes rank, guess, expected_remaining, and other metrics.
     
     Returns:
-        List of dictionaries, each containing:
-        - first_guess: str (the word)
-        - rank: int (1-32)
-        - expected_remaining: float
-        - max_remaining: int
-        - clue_diversity: int
-        - variance: float
-        - std_dev: float
-        - total_targets: int
-        - available: bool (always True for these)
+        List of first guess option dictionaries, each containing:
+        - first_guess: str (the word, e.g., "RAISE")
+        - rank: int (1-32, where 1 is best)
+        - expected_remaining: float (average remaining words after first guess)
+        - metrics: dict with max_remaining, clue_diversity, variance, std_dev
+        - available: bool (always True for these 32 options)
         - coverage: float (estimated coverage, default 0.8125)
+    
+    Example:
+        >>> options = get_available_first_guesses()
+        >>> print(options[0]['first_guess'])  # Top-ranked guess
+        'RAISE'
     """
     return _load_first_guess_options().copy()
 
 
-def select_first_guess(user_choice: str) -> Optional[Dict]:
+def select_first_guess(user_choice: str) -> Optional[FirstGuessOption]:
     """Select and validate a first guess from available options.
     
     Args:
-        user_choice: The first guess word selected by user (e.g., "RAISE", "STALE")
+        user_choice: The first guess word selected by user (e.g., "RAISE", "STALE").
+                     Case-insensitive.
         
     Returns:
-        Dictionary with first guess information, or None if not found:
-        {
-            "first_guess": "RAISE",
-            "rank": 1,
-            "expected_remaining": 90.15,
-            "metrics": {
-                "max_remaining": 240,
-                "clue_diversity": 137,
-                "variance": 1234.56,
-                "std_dev": 35.12
-            },
-            "available": true,
-            "coverage": 0.8125
-        }
+        Dictionary with first guess information if found, None otherwise.
+        Contains: first_guess, rank, expected_remaining, metrics, available, coverage.
+    
+    Example:
+        >>> option = select_first_guess("RAISE")
+        >>> print(option['rank'])
+        1
     """
     available = get_available_first_guesses()
     user_choice_upper = user_choice.upper()
     
     for option in available:
         if option['first_guess'] == user_choice_upper:
+            logger.debug(f"Selected first guess: {user_choice_upper} (rank {option['rank']})")
             return option
     
+    logger.warning(f"First guess '{user_choice}' not found in available options")
     return None
 
 
@@ -436,20 +593,28 @@ def get_strategy_for_first_guess(first_guess: str) -> Dict[str, str]:
     return result
 
 
-def get_second_guess_recommendation(first_guess: str, clue: tuple) -> Optional[str]:
+def get_second_guess_recommendation(first_guess: str, clue: ClueTuple) -> Optional[str]:
     """Get recommended second guess for a (first_guess, clue) pair.
     
+    This function provides O(1) lookup performance for second guess recommendations
+    using the Phase 3 strategy lookup table.
+    
     Args:
-        first_guess: The first guess word
-        clue: The clue tuple ('G', 'Y', 'B', ...)
+        first_guess: The first guess word (e.g., "RAISE", "ATONE"). Case-insensitive.
+        clue: The clue tuple with 5 elements ('G', 'Y', 'B' or 'X', ...)
         
     Returns:
-        Recommended second guess word, or None if not found
+        Recommended second guess word if found, None otherwise.
+    
+    Example:
+        >>> get_second_guess_recommendation("RAISE", ('G', 'Y', 'B', 'B', 'B'))
+        'CLOUD'
     """
     lookup = _load_strategy_lookup()
     first_guess_upper = first_guess.upper()
     
     if first_guess_upper not in lookup:
+        logger.debug(f"First guess '{first_guess_upper}' not found in strategy lookup")
         return None
     
     # Convert clue tuple to string pattern
@@ -463,7 +628,10 @@ def get_second_guess_recommendation(first_guess: str, clue: tuple) -> Optional[s
     candidates = first_guess_data.get(clue_pattern)
     
     if not candidates or len(candidates) == 0:
+        logger.debug(f"No strategy recommendation for pattern '{clue_pattern}' with first guess '{first_guess_upper}'")
         return None
     
     # Return the top-ranked (rank 1) second guess
-    return candidates[0]['second_guess']
+    recommendation = candidates[0]['second_guess']
+    logger.debug(f"Strategy recommendation for {first_guess_upper} + {clue_pattern}: {recommendation}")
+    return recommendation

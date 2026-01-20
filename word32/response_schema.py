@@ -5,10 +5,14 @@ across CLI, Web App, and Discord bot platforms.
 """
 
 import json
+import logging
 import random
 from typing import Optional, Literal
 from dataclasses import dataclass, asdict
 from enum import Enum
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class ResponseVersion(str, Enum):
@@ -223,7 +227,27 @@ def build_game_response(
         
     Returns:
         GameResponse object
+        
+    Raises:
+        ValueError: If guess is not 5 letters or clue is invalid
+        
+    Example:
+        >>> response = build_game_response(
+        ...     "RAISE", ('G', 'Y', 'B', 'B', 'B'), ["CRANE", "CRATE"],
+        ...     strategy_recommendation={'recommended_guess': 'CLOUD', 'confidence': 0.9}
+        ... )
+        >>> response.success
+        True
     """
+    # Validate inputs
+    if len(guess) != 5:
+        logger.error(f"Invalid guess length: {len(guess)} (expected 5)")
+        raise ValueError(f"Guess must be exactly 5 letters, got {len(guess)}")
+    
+    if len(clue) != 5:
+        logger.error(f"Invalid clue length: {len(clue)} (expected 5)")
+        raise ValueError(f"Clue must be exactly 5 elements, got {len(clue)}")
+    
     # Format clue
     clue_list = format_clue_tuple(clue)
     
@@ -233,6 +257,8 @@ def build_game_response(
         size=sample_size,
         random_sample=random_sample
     )
+    
+    logger.debug(f"Built game response: guess={guess}, remaining={len(remaining_targets)}, sample_size={len(sample)}")
     
     remaining = RemainingWords(
         count=len(remaining_targets),
@@ -329,10 +355,12 @@ def validate_response(response: dict, schema_version: str = "1.0") -> tuple[bool
         # Validate clue format
         clue = response.get('clue', [])
         if not isinstance(clue, list) or len(clue) != 5:
+            logger.warning(f"Invalid clue format: {clue}")
             return False, "Clue must be a list of 5 elements"
         
         for code in clue:
             if code not in ['G', 'Y', 'X', 'B']:
+                logger.warning(f"Invalid clue code: {code}")
                 return False, f"Invalid clue code: {code}"
         
         # Validate remaining structure

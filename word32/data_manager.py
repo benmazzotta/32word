@@ -1,9 +1,17 @@
-"""Data validation and integrity checking for the 32word library."""
+"""Data validation and integrity checking for the 32word library.
+
+This module provides centralized data validation, integrity checking, and
+caching for all required data files in the 32word library.
+"""
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class DataManager:
@@ -160,8 +168,10 @@ class DataManager:
         """
         # Use cached result if available
         if self._validation_cache is not None:
+            logger.debug("Using cached validation results")
             return self._validation_cache
         
+        logger.debug("Starting data completeness validation")
         issues = []
         
         # Required files with their validation functions
@@ -179,10 +189,17 @@ class DataManager:
             filepath = self._get_file_path(filename)
             is_valid, error_msg = validate_func(filepath)
             if not is_valid:
+                logger.warning(f"Validation failed for {filename}: {error_msg}")
                 issues.append(f"{filename}: {error_msg}")
+            else:
+                logger.debug(f"Validation passed for {filename}")
         
         # Cache the result
         self._validation_cache = issues
+        if issues:
+            logger.warning(f"Data validation found {len(issues)} issue(s)")
+        else:
+            logger.info("All data files validated successfully")
         return issues
     
     def get_required_files(self) -> Dict[str, Dict]:
