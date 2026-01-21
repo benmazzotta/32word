@@ -19,7 +19,7 @@ classifiers = [
 include-package-data = true
 
 [tool.setuptools.package-data]
-word32 = ["data/*.txt", "data/*.json"]
+word32 = ["data/*.txt", "data/*.json", "data/strategies/*.json"]
 
 [tool.setuptools.packages.find]
 where = ["."]

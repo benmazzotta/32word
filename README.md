@@ -136,6 +136,35 @@ print(f"{response.remaining.count} words remain")
 print(f"Sample: {response.remaining.sample}")
 ```
 
+### Minimal Memorization Strategies (Phase 4.8/4.9)
+
+For mobile apps or players who want minimal memorization, use optimized 2d+8r strategies with tiny lookup tables (~650 bytes):
+
+```python
+from word32 import load_strategy_by_components, list_strategies_by_depth
+
+# Load TRICE - best 2d+8r performer (39.14% 2-guess win rate)
+strategy = load_strategy_by_components("TRICE", 8)
+
+# List all available 2d+8r strategies
+strategies_8r = list_strategies_by_depth(8)
+print(f"Available 8r strategies: {strategies_8r}")
+# ['TRICE', 'DEALT', 'SIREN', 'ADULT', 'CRONE', 'NOISE', 'POSER', 'RINSE', 'RISEN', 'SITAR', 'SNORE']
+
+# Get second guess from TRICE strategy
+clue = ('G', 'Y', 'X', 'X', 'G')
+second_guess = strategy.get_second_guess(clue)
+print(f"Recommended second guess: {second_guess}")
+```
+
+**Trade-offs:**
+- ✅ **Compact**: ~650 bytes per strategy vs 425 KB for full lookup
+- ✅ **Portable**: Ideal for mobile/embedded apps
+- ⚠️ **Coverage**: Only 8 clue patterns per first guess (vs ~240 for full)
+- ⚠️ **Win rate**: 37-39% for 2-guess wins (vs 90%+ for full strategy)
+
+**Best for:** 3-guess play, mobile constraints, or training progression.
+
 **Integration Guides:**
 - [Web App Integration](./docs/INTEGRATION_WEB_APP.md) - React/Flask examples
 - [Discord Bot Integration](./docs/INTEGRATION_DISCORD_BOT.md) - discord.py examples

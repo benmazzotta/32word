@@ -123,6 +123,61 @@ Choose from 32 optimal first guess options ranked by performance:
 - **`data/phase2_naive_32.json`** - 32 optimal first guess options with metrics
 - **`data/phase3_lookup.json`** - Strategy lookup table for all 32 first guesses
 
+### Phase 4.8/4.9: Depth-Based Strategies (2d+8r)
+
+For players who prefer minimal memorization, 11 optimized strategies that require only 8 clues of memory:
+
+#### New Functions
+
+- **`load_strategy_by_components(first_guess, depth)`** - Load strategy by first guess and depth
+  ```python
+  from word32 import load_strategy_by_components
+
+  # Load TRICE with 8-clue depth (best 2d+8r performer)
+  strategy = load_strategy_by_components("TRICE", 8)
+  # Returns Strategy object for efficient second guess lookups
+  ```
+
+- **`list_strategies_by_depth(depth)`** - List all available strategies for a given depth
+  ```python
+  from word32 import list_strategies_by_depth
+
+  strategies_8r = list_strategies_by_depth(8)
+  # Returns list of available first guesses for 8-clue depth
+  ```
+
+- **`list_all_strategies()`** - Get all available depth strategies with metadata
+  ```python
+  from word32 import list_all_strategies
+
+  all_strategies = list_all_strategies()
+  # Returns dict mapping depths to available first guesses with win rates
+  ```
+
+#### Available 2d+8r Strategies
+
+Eleven strategies optimized for minimal memorization (8-clue lookup tables):
+
+| Rank | First Guess | Win Rate | Memory | Type |
+|------|-------------|----------|--------|------|
+| 1 | TRICE | 39.14% | ~650 bytes | Optimal 2d+8r |
+| 2 | DEALT | 38.65% | ~650 bytes | Optimal 2d+8r |
+| 3 | SIREN | 37.87% | ~650 bytes | Optimal 2d+8r |
+| 4-11 | ADULT, CRONE, NOISE, POSER, RINSE, RISEN, SITAR, SNORE | 34-38% | ~650 bytes | Optimal 2d+8r |
+
+#### Use Cases
+
+- **Mobile/lightweight apps** - Minimal data footprint (~650 bytes vs 425 KB for phase3)
+- **Memory-constrained environments** - Embedded systems, IoT devices
+- **Player preference** - Users who want to memorize fewer patterns
+- **Training progression** - Start with 2d+8r, graduate to full strategy
+
+#### Trade-offs
+
+- **Advantage**: Extremely compact (1000x smaller than full lookup tables)
+- **Disadvantage**: 2-guess win rate 37-39% vs 90%+ for full strategies
+- **Best for**: 3-guess play where memory is premium
+
 ---
 
 ## Improvements
@@ -236,13 +291,17 @@ set_guess_validation_mode('all')
 
 ### Data Requirements
 
-The library requires 5 data files for full functionality:
+The library requires core data files for full functionality:
 
+**Core files (required for all features):**
 1. **`data/targets.txt`** - 2,309 target words (Wordle answers)
 2. **`data/valid_guesses.txt`** - 12,950 valid guess words
 3. **`data/phase2_naive_32.json`** - 32 optimal first guess options
 4. **`data/phase3_lookup.json`** - Strategy lookup for all 32 first guesses
 5. **`data/v1.0.json`** - Legacy strategy file (for backwards compatibility)
+
+**Depth strategies (optional, for minimal memorization):**
+- **`data/strategies/2d_8r_*.json`** - 11 optimized 2d+8r strategies (TRICE, DEALT, SIREN, ADULT, CRONE, NOISE, POSER, RINSE, RISEN, SITAR, SNORE)
 
 All data files are included in the package distribution.
 
