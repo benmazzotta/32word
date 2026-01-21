@@ -446,6 +446,8 @@ if (remaining.count === 1 && !gameState.is_solved) {
 
 **Backend (`app.py`):**
 ```python
+import os
+import secrets
 from flask import Flask, request, jsonify, session
 from word32 import (
     get_available_first_guesses,
@@ -462,7 +464,8 @@ from word32 import (
 import random
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'
+# Use environment variable for production, generate for development
+app.secret_key = os.getenv('FLASK_SECRET_KEY', secrets.token_hex(32))
 
 @app.route('/api/first-guesses', methods=['GET'])
 def get_first_guesses():

@@ -320,6 +320,7 @@ async def on_command_error(ctx, error):
 ## Complete Example Bot
 
 ```python
+import os
 import discord
 from discord.ext import commands
 from word32 import (
@@ -487,7 +488,7 @@ async def on_ready():
     print(f'{bot.user} has connected to Discord!')
 
 # Run bot
-bot.run('YOUR_BOT_TOKEN')
+bot.run(os.getenv('DISCORD_BOT_TOKEN'))
 ```
 
 ## Advanced Features
