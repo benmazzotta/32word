@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "32word"
-version = "0.2.0"
+version = "0.2.1"
 description = "The game engine for 3-2-Word: Solve Wordle in three guesses. Includes standardized response schema (Phase 4.2), custom first guess selection from 32 optimal options (Phase 4.3), remaining words tracking, and comprehensive strategy lookup."
 readme = "README.md"
 requires-python = ">=3.8"
